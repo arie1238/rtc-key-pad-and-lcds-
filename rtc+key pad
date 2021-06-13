@@ -1,0 +1,145 @@
+#include <LiquidCrystal_I2C.h>
+#include <Wire.h>
+#include <RTC.h>
+#include <Keypad.h>
+#define SIZE 2
+const byte ROWS = 4; //four rows
+const byte COLS = 4; //three columns
+const char keys[ROWS][COLS] = 
+{
+  {'1','2','3','A'},
+  {'4','5','6','B'},
+  {'7','8','9','C'},
+  {'*','0','#','D'}
+};
+byte rowPins[ROWS] = {2,3,4,5}; //connect to the row pinouts of the keypad
+byte colPins[COLS] = {6,7,8,9}; //connect to the column pinouts of the keypad
+
+Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
+
+static DS1307 RTC;
+LiquidCrystal_I2C lcd(0X27,16,2);
+
+
+int enter_num(String str)
+{
+  int index = 0;
+  char key[2] = {0};
+  do{
+    lcd.setCursor(3,0);
+    lcd.print("enter ");
+    lcd.print(str);
+    key[index] = keypad.getKey();
+    lcd.setCursor(3,1);
+    lcd.print(key[0]);
+    lcd.print(key[1]);
+    index++;
+  }while(index < 2 && key[1]!='#');
+  lcd.clear();
+
+  int num = 10 * atoi(key[0]) + atoi(key[1]);
+  return num;
+}
+
+
+void setNewTime()
+{
+  char hours[SIZE] = {0};
+  char minutes[SIZE] = {0};
+  char seconds[SIZE] = {0};
+  int hoursSum = 0;
+  int minutesSum = 0;
+  int secondsSum = 0;
+  lcd.clear();
+  lcd.print("Enter hours: ");
+    delay(3000);
+  lcd.clear();
+    delay(5000);
+  for(int i = 0; i < 2; i++)
+  {
+    hours[i] = keypad.getKey();
+    hoursSum *= 10;
+    hoursSum += (int)hours[i] - '0';
+  }
+  lcd.print("Enter minutes: ");
+  delay(3000);
+  lcd.clear();
+  delay(5000);
+  for(int i = 0; i < 2; i++)
+  {
+    minutes[i] = keypad.getKey();
+    minutesSum *= 10;
+    minutesSum += (int)minutes[i] - '0';
+  }
+  lcd.print("Enter seconds: ");
+  delay(3000);
+  lcd.clear();
+  delay(10000);
+  for(int i = 0; i < 2; i++)
+  {
+    seconds[i] = keypad.getKey();
+    secondsSum *= 10;
+    secondsSum += (int)seconds[i] - '0';
+  }
+  if(secondsSum <= 59 && minutesSum <= 59 && minutesSum && hoursSum < 24)
+  {
+    //Can change the time, it is legal
+    
+    RTC.setHours((byte)hoursSum);
+    RTC.setMinutes((byte)minutesSum);
+    RTC.setSeconds((byte)secondsSum);
+  }
+}
+
+
+
+
+
+
+void setup()
+{
+	RTC.begin();
+  lcd.init();
+  lcd.backlight();
+  Serial.begin(9600);
+	Serial.print("Is Clock Running: "); 
+
+
+}
+
+
+void loop()
+{
+
+  Serial.print("Is Clock Running: ");
+  if (RTC.isRunning())
+  {
+     lcd.print(RTC.getHours());
+     lcd.print(":");
+     lcd.print(RTC.getMinutes());
+     lcd.print(":");
+     lcd.print(RTC.getSeconds());
+     lcd.print("");
+
+     lcd.print("");
+    delay(1000);
+    lcd.clear();
+    
+  }
+  else
+  {
+    delay(1500);
+
+    Serial.println("No");
+    Serial.println("Setting Time");
+    //RTC.setHourMode(CLOCK_H12);
+    RTC.setHourMode(CLOCK_H24);
+    RTC.setDateTime(__DATE__, __TIME__);
+    Serial.println("New Time Set");
+    Serial.print(__DATE__);
+    Serial.print(" ");
+    Serial.println(__TIME__);
+      setNewTime();
+    RTC.startClock();
+  }
+}
